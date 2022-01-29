@@ -1,0 +1,14 @@
+apiVersion: ignite.weave.works/v1alpha4
+kind: VM
+metadata:
+  name: testvm
+  uid: 599615df99804ae8
+spec:
+  image:
+    oci: weaveworks/ignite-ubuntu
+  cpus: 1
+  diskSize: 3GB
+  memory: 800MB
+  ssh: true
+status:
+  running: true
