@@ -1,0 +1,22 @@
+version: '3'
+
+tasks:
+  default:
+    cmds:
+      - echo "this is the default task"
+  hello:
+    cmds:
+      - echo "Hello {{.VAR}} from Task!"
+    vars:
+      VAR: World
+      #silent: true
+
+  goodbye:
+    cmds:
+      - echo "Goodbye!"
+    silent: true
+
+  edit:
+    cmds:
+      - vim Taskfile.yml
+    interactive: true
