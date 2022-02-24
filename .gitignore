@@ -1,0 +1,6 @@
+**/.terraform.lock*
+**/.terraform
+.local
+.vagrant
+iac/volume_pool
+**/terraform.tfstate*

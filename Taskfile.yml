@@ -1,20 +1,71 @@
-version: '3'
+version: "3"
+
+env:
+  TF_VERSION: 1.1.6
+  KEY_PATH: .local/.ssh
+  KEY_NAME: id_rsa
+
 
 tasks:
-  default:
+  up:
+    deps:
+      - deps
+      - setup
     cmds:
-      - echo "this is the default task"
-  hello:
-    cmds:
-      - echo "Hello {{.VAR}} from Task!"
-    vars:
-      VAR: World
-      #silent: true
+      - echo "hallo - not implemented yet"
+    preconditions:
+      - sudo kvm-ok
 
-  goodbye:
+  setup:
     cmds:
-      - echo "Goodbye!"
-    silent: true
+      - task: setup.keys
+
+  setup.keys:
+    cmds:
+      - mkdir -p ${KEY_PATH}
+      - ssh-keygen -t rsa -b 4096 -N '' -f ${KEY_PATH}/${KEY_NAME} -q
+    status:
+      - test -d ${KEY_PATH}
+      - test -f ${KEY_PATH}/${KEY_NAME}
+      - test -f ${KEY_PATH}/${KEY_NAME}.pub
+
+  deps:
+    cmds:
+      - task: deps.terraform
+      - task: deps.libvirt
+      - task: deps.mkisofs
+
+  deps.terraform:
+    deps:
+      - deps.tfenv
+    cmds:
+      - tfenv install {{.TERRAFORM_VERSION}}
+    status:
+      - tfenv list | grep {{.TERRAFORM_VERSION}}
+    vars:
+      TERRAFORM_VERSION:
+        sh: cat .terraform-version || echo $TF_VERSION
+
+  deps.tfenv:
+    cmds:
+      - git clone https://github.com/tfutils/tfenv.git ~/.tfenv
+      - echo 'export PATH="$HOME/.tfenv/bin:$PATH"' >> ~/.profile
+    status:
+      - which tfenv
+
+  deps.mkisofs:
+    cmds:
+      - sudo apt update
+      - sudo apt install -y mkisofs
+    status:
+      - which mkisofs
+
+  deps.libvirt:
+    cmds:
+      - sudo apt update
+      - sudo apt install -y qemu-kvm libvirt-daemon-system
+    status:
+      - which libvirtd
 
   edit:
     cmds:
