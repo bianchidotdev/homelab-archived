@@ -1,5 +1,5 @@
-output master_ip {
-  value = libvirt_domain.k8s_masters[0].network_interface[0].addresses[0]
+output sample_node_ip {
+  value = libvirt_domain.sample_node.network_interface[0].addresses[0]
 }
 
 # output worker_1_ip {

@@ -11,9 +11,9 @@ provider libvirt {
 }
 
 locals {
-  kube_version = "1.23.3"
-  masternodes = 1
-  workernodes = 0
+  # kube_version = "1.23.3"
+  # masternodes = 1
+  # workernodes = 0
   subnet_node_prefix = "10.10.1"
 }
 
@@ -31,11 +31,10 @@ resource libvirt_volume ubuntu2004_cloud {
 }
 
 resource libvirt_volume ubuntu2004_resized {
-  name           = "ubuntu-volume-${count.index}"
+  name           = "ubuntu-volume"
   base_volume_id = libvirt_volume.ubuntu2004_cloud.id
   pool           = libvirt_pool.local.name
-  size           = 4 * 1024 * 1024 * 1024 # 40GB
-  count          = local.masternodes + local.workernodes
+  size           = 2 * 1024 * 1024 * 1024 # 40GB
 }
 
 data template_file public_key {
@@ -54,44 +53,51 @@ data template_file public_key {
 #   filename = "${path.module}/envvars.env"
 # }
 
-data template_file master_user_data {
-  count = local.masternodes
+data template_file node_user_data {
   template = file("${path.module}/../cloud_init.cfg")
   vars = {
     public_key = data.template_file.public_key.rendered
-    hostname = "k8s-master-${count.index + 1}"
-    kube_version = local.kube_version
+    hostname = "sample_node"
   }
 }
 
-data template_file worker_user_data {
-  count = local.workernodes
-  template = file("${path.module}/../cloud_init.cfg")
-  vars = {
-    public_key = data.template_file.public_key.rendered
-    hostname = "k8s-worker-${count.index + 1}"
-    kube_version = local.kube_version
-  }
-}
+# data template_file master_user_data {
+#   count = local.masternodes
+#   template = file("${path.module}/../cloud_init.cfg")
+#   vars = {
+#     public_key = data.template_file.public_key.rendered
+#     hostname = "k8s-master-${count.index + 1}"
+#     kube_version = local.kube_version
+#   }
+# }
 
-resource libvirt_cloudinit_disk masternodes {
-  count = local.masternodes
-  name = "cloudinit_master_resized_${count.index}.iso"
+# data template_file worker_user_data {
+#   count = local.workernodes
+#   template = file("${path.module}/../cloud_init.cfg")
+#   vars = {
+#     public_key = data.template_file.public_key.rendered
+#     hostname = "k8s-worker-${count.index + 1}"
+#     kube_version = local.kube_version
+#   }
+# }
+
+resource libvirt_cloudinit_disk sample_node {
+  name = "cloudinit_master_resized.iso"
   pool = libvirt_pool.local.name
-  user_data = data.template_file.master_user_data[count.index].rendered
+  user_data = data.template_file.node_user_data.rendered
 }
 
-resource libvirt_cloudinit_disk workernodes {
-  count = local.workernodes
-  name = "cloudinit_worker_resized_${count.index}.iso"
-  pool = libvirt_pool.local.name
-  user_data = data.template_file.worker_user_data[count.index].rendered
-}
+# resource libvirt_cloudinit_disk workernodes {
+#   count = local.workernodes
+#   name = "cloudinit_worker_resized_${count.index}.iso"
+#   pool = libvirt_pool.local.name
+#   user_data = data.template_file.worker_user_data[count.index].rendered
+# }
 
-resource libvirt_network kube_node_network {
-  name      = "kube_nodes"
+resource libvirt_network node_network {
+  name      = "sample_nodes"
   mode      = "nat"
-  domain    = "k8s.local"
+  domain    = "node.local"
   autostart = true
   addresses = ["${local.subnet_node_prefix}.0/24"]
   dns {
@@ -114,55 +120,22 @@ resource libvirt_network kube_node_network {
 #   }
 # }
 
-resource libvirt_domain k8s_masters {
-  count = local.masternodes
-  name   = "k8s-master-${count.index+1}"
-  memory = "4096"
-  vcpu   = 2
-
-  cloudinit = libvirt_cloudinit_disk.masternodes[count.index].id
-
-  network_interface {
-    network_id     = libvirt_network.kube_node_network.id
-    hostname       = "k8s-master-${count.index+1}"
-    addresses      = ["${local.subnet_node_prefix}.1${count.index+1}"]
-    wait_for_lease = true
-  }
-
-  disk {
-    volume_id = libvirt_volume.ubuntu2004_resized[count.index].id
-  }
-
-  console {
-    type        = "pty"
-    target_type = "serial"
-    target_port = "0"
-  }
-
-  graphics {
-    type        = "spice"
-    listen_type = "address"
-    autoport    = true
-  }
-}
-
-resource libvirt_domain k8s_workers {
-  count = local.workernodes
-  name   = "k8s-worker-${count.index + 1}"
+resource libvirt_domain sample_node {
+  name   = "sample_node"
   memory = "2048"
-  vcpu   = 2
+  vcpu   = 1
 
-  cloudinit = libvirt_cloudinit_disk.workernodes[count.index].id
+  cloudinit = libvirt_cloudinit_disk.sample_node.id
 
   network_interface {
-    network_id     = libvirt_network.kube_node_network.id
-    hostname       = "k8s-worker-${count.index + 1}"
-    addresses      = ["${local.subnet_node_prefix}.2${count.index + 1}"]
+    network_id     = libvirt_network.node_network.id
+    hostname       = "sample_node"
+    addresses      = ["${local.subnet_node_prefix}.10"]
     wait_for_lease = true
   }
 
   disk {
-    volume_id = libvirt_volume.ubuntu2004_resized[local.masternodes+count.index].id
+    volume_id = libvirt_volume.ubuntu2004_resized.id
   }
 
   console {
@@ -177,3 +150,35 @@ resource libvirt_domain k8s_workers {
     autoport    = true
   }
 }
+
+# resource libvirt_domain k8s_workers {
+#   count = local.workernodes
+#   name   = "k8s-worker-${count.index + 1}"
+#   memory = "2048"
+#   vcpu   = 2
+
+#   cloudinit = libvirt_cloudinit_disk.workernodes[count.index].id
+
+#   network_interface {
+#     network_id     = libvirt_network.kube_node_network.id
+#     hostname       = "k8s-worker-${count.index + 1}"
+#     addresses      = ["${local.subnet_node_prefix}.2${count.index + 1}"]
+#     wait_for_lease = true
+#   }
+
+#   disk {
+#     volume_id = libvirt_volume.ubuntu2004_resized[local.masternodes+count.index].id
+#   }
+
+#   console {
+#     type        = "pty"
+#     target_type = "serial"
+#     target_port = "0"
+#   }
+
+#   graphics {
+#     type        = "spice"
+#     listen_type = "address"
+#     autoport    = true
+#   }
+# }
