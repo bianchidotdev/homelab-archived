@@ -34,7 +34,7 @@ resource libvirt_volume ubuntu2004_resized {
   name           = "ubuntu-volume"
   base_volume_id = libvirt_volume.ubuntu2004_cloud.id
   pool           = libvirt_pool.local.name
-  size           = 2 * 1024 * 1024 * 1024 # 40GB
+  size           = 4 * 1024 * 1024 * 1024 # 40GB
 }
 
 data template_file public_key {
